@@ -21,7 +21,9 @@ app.use(cors({
     methods: ['GET','POST','OPTIONS'],
     allowedHeaders: ["Content-Type"],
 }));
-
+app.get('/', (req, res) => {
+    res.json({ message: 'Hello World!' });
+});
 // Routes
 import emailRouter from './routes/email.js'
 app.use('/email', emailRouter);
