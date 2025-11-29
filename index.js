@@ -14,7 +14,11 @@ if (!process.env.RESEND_API_KEY) {
 const app = express();
 
 // Middleware
-app.use(cors());
+// app.use(cors());
+app.use(cors({
+  origin: ['https://saddams-porto.netlify.app', 'http://localhost:3000'],  // Your frontend domain
+  credentials: true  // If you need cookies/auth
+}));
 app.use(express.json());
 
 // Routes
