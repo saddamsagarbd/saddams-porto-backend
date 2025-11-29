@@ -31,4 +31,4 @@ app.use('/email', emailRouter);
 //     console.log(`Server running on port ${PORT}`);
 // });
 
-export const handler = serverless(app);
+export default serverless(app);
