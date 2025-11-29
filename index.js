@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-// const mongoose = require('mongoose');
+import serverless from "serverless-http";
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -14,19 +14,21 @@ if (!process.env.RESEND_API_KEY) {
 const app = express();
 
 // Middleware
-app.use(cors());
-// app.use(cors({
-//     origin: ['https://www.gowithsagar.xyz', 'http://localhost:3000'],
-//     methods: ['POST', 'OPTIONS'],
-//     credentials: true  // If you need cookies/auth
-// }));
+// app.use(cors());
 app.use(express.json());
+app.use(cors({
+    origin: ['https://www.gowithsagar.xyz', 'http://localhost:3000'],
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type"],
+}));
 
 // Routes
-import email from './routes/email.js'
-app.use('/api/email', email);
+import emailRouter from './routes/email.js'
+app.use('/api/email', emailRouter);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
+
+export const handler = serverless(app);
