@@ -2,10 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import serverless from "serverless-http";
 import dotenv from 'dotenv';
-
 dotenv.config();
 
 // 2. Critical check — stop everything if key is missing
+console.log('RESEND_API_KEY:', process.env.RESEND_API_KEY ? 'Loaded ✅' : 'Missing ❌');
 if (!process.env.RESEND_API_KEY) {
     console.error('RESEND_API_KEY is missing in .env file!');
     process.exit(1); // Stop the server completely
