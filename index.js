@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import serverless from "serverless-http";
+// import serverless from "serverless-http";
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -31,4 +31,4 @@ app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
 
-export const handler = serverless(app);
+// export const handler = serverless(app);
