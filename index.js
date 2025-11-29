@@ -21,7 +21,7 @@ app.use(cors({
     methods: ['GET','POST','OPTIONS'],
     allowedHeaders: ["Content-Type"],
 }));
-app.get('/', (req, res) => {
+app.get('/test', (req, res) => {
     res.json({ message: 'Hello World!' });
 });
 // Routes
