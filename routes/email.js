@@ -1,6 +1,6 @@
-const express = require('express');
-const { sendEmail } = require('../services/emailService');
-const router = express.Router();
+import { Router } from 'express';
+import { Resend } from 'resend';
+const router = Router();
 
 router.post('/send', async (req, res) => {
     try {
@@ -14,6 +14,9 @@ router.post('/send', async (req, res) => {
                 error: 'Please use your personal email address, not our contact email.'
             });
         }
+
+        // This now works perfectly because .env was loaded before this file was imported
+        const resend = new Resend(process.env.RESEND_API_KEY);
 
         const generateAutoReplyTemplate = (data) => {
             return `<!DOCTYPE html>
@@ -394,32 +397,34 @@ router.post('/send', async (req, res) => {
             </html>`;
         }
 
-        const result = await sendEmail({
-            to: process.env.EMAIL_USER, // Your receiving email
-            replyTo: email, // Client's email
-            subject: `New Website Query from ${name}`,
-            html: generateQueryEmailTemplate({ name, email, phone, message }),
+        const { error: notifyError } = await resend.emails.send({
+            from: `${name} <notify@resend.dev>`, // Change yourdomain.com to your actual domain or keep as-is
+            to: process.env.EMAIL_USER,
+            replyTo: email, // When you hit reply → goes to client
+            subject: `New Message from ${name} (${email})`,
+            html: generateQueryEmailTemplate({ name, email, phone, message }), // your beautiful template stays the same
         });
 
-        if (result.success) {
-            // 2. Send auto-reply to client
-            await sendEmail({
-                to: email, // (client)
-                replyTo: process.env.EMAIL_USER, // (you)
-                subject: 'Thank you for contacting me!',
-                html: generateAutoReplyTemplate({ name }),
-            });
-
-            res.json({ 
-                success: true, 
-                message: 'Message sent successfully!' 
-            });
-        } else {
-            res.status(500).json({ success: false, error: result.error });
+        if (notifyError) {
+            console.error('Failed to send to you:', notifyError);
+            return res.status(500).json({ success: false, error: 'Failed to send notification' });
         }
+
+        // 2. Send auto-reply to the client
+        await resend.emails.send({
+            from: `Md. Saddam Hossain <${process.env.EMAIL_USER}>`, // Your name/email
+            to: email,
+            subject: 'Thank you for contacting me! I received your message',
+            html: generateAutoReplyTemplate({ name }),
+        });
+
+        res.json({
+            success: true,
+            message: 'Message sent successfully! Auto-reply delivered.',
+        });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-module.exports = router;
+export default router;
