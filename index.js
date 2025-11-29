@@ -24,7 +24,7 @@ app.use(cors({
 
 // Routes
 import emailRouter from './routes/email.js'
-app.use('/api/email', emailRouter);
+app.use('/email', emailRouter);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
