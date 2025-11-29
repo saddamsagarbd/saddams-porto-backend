@@ -16,8 +16,7 @@ const app = express();
 // Middleware
 // app.use(cors());
 app.use(cors({
-  origin: ['https://saddams-porto.netlify.app', 'http://localhost:3000'],  // Your frontend domain
-  credentials: true  // If you need cookies/auth
+    origin: ['https://www.gowithsagar.xyz', 'http://localhost:3000'],
 }));
 app.use(express.json());
 
