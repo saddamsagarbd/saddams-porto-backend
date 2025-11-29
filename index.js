@@ -14,11 +14,12 @@ if (!process.env.RESEND_API_KEY) {
 const app = express();
 
 // Middleware
-// app.use(cors());
-app.use(cors({
-    origin: ['https://www.gowithsagar.xyz', 'http://localhost:3000'],
-    credentials: true  // If you need cookies/auth
-}));
+app.use(cors());
+// app.use(cors({
+//     origin: ['https://www.gowithsagar.xyz', 'http://localhost:3000'],
+//     methods: ['POST', 'OPTIONS'],
+//     credentials: true  // If you need cookies/auth
+// }));
 app.use(express.json());
 
 // Routes

@@ -3,6 +3,9 @@ import { Resend } from 'resend';
 const router = Router();
 
 router.post('/send', async (req, res) => {
+
+    res.setHeader('Access-Control-Allow-Origin', ['http://gowithsagar.xyz', 'http://localhost:3000']);
+    
     try {
     
         const { name, email, phone, message } = req.body;
