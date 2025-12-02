@@ -1,24 +1,107 @@
 import { Router } from 'express';
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
+
 const router = Router();
 
-router.post('/send', async (req, res) => {
+// Function to create transporter with fallbacks
+const createTransporter = () => {
 
-    try {
+    const user = process.env.GMAIL_USER;
+    const pass = process.env.GMAIL_APP_PASSWORD;
     
+    if (!user || !pass) return null;
+    
+    try {
+        // Try multiple configurations
+        const transporter = nodemailer.createTransport({
+            host: 'smtp.gmail.com',
+            port: 587,
+            secure: false, // Use TLS
+            requireTLS: true,
+            auth: {
+                user: user,
+                pass: pass
+            },
+            tls: {
+                ciphers: 'SSLv3',
+                rejectUnauthorized: false
+            },
+            debug: process.env.NODE_ENV === 'development'
+        });
+        
+        return transporter;
+    } catch (error) {
+        return null;
+    }
+};
+
+const transporter = createTransporter();
+
+// Test route to check email configuration
+router.get('/test-config', async (req, res) => {
+    try {
+        if (!transporter) {
+            return res.status(500).json({
+                success: false,
+                error: 'Email transporter not configured',
+                details: 'Check GMAIL_USER and GMAIL_APP_PASSWORD in .env file'
+            });
+        }
+        
+        // Verify connection
+        await transporter.verify();
+        
+        // Try a simple test email
+        const testInfo = await transporter.sendMail({
+            from: process.env.GMAIL_USER,
+            to: process.env.GMAIL_USER, // Send to yourself
+            subject: 'Test Email Configuration',
+            text: 'If you receive this, your email configuration is working!',
+            html: '<h1>Test Email</h1><p>Your email configuration is working!</p>'
+        });
+        
+        res.json({
+            success: true,
+            message: 'Email configuration test successful',
+            messageId: testInfo.messageId,
+            configuration: {
+                user: process.env.GMAIL_USER ? 'Set' : 'Not set',
+                password: process.env.GMAIL_APP_PASSWORD ? 'Set' : 'Not set',
+                smtp: 'smtp.gmail.com:587'
+            }
+        });
+        
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Email configuration test failed',
+            details: error.message,
+            code: error.code
+        });
+    }
+});
+
+router.post('/send', async (req, res) => {
+    try {
         const { name, email, phone, message } = req.body;
 
+        // Validation
+        if (!name || !email || !message) {
+            return res.status(400).json({
+                success: false,
+                error: 'Name, email, and message are required.'
+            });
+        }
+
         // Prevent using your own email as client email
-        if (email === process.env.EMAIL_USER) {
+        if (email === process.env.EMAIL_USER || email === process.env.GMAIL_USER) {
             return res.status(400).json({
                 success: false,
                 error: 'Please use your personal email address, not our contact email.'
             });
         }
 
-        // This now works perfectly because .env was loaded before this file was imported
-        const resend = new Resend(process.env.RESEND_API_KEY);
-
+        // Auto-reply template for client
         const generateAutoReplyTemplate = (data) => {
             return `<!DOCTYPE html>
                     <html>
@@ -33,15 +116,16 @@ router.post('/send', async (req, res) => {
                                 <p><strong>Best regards,</strong><br>Md. Saddam Hossain</p>
                                 <hr>
                                 <p style="color: #666;">
-                                    Email: ${process.env.EMAIL_USER}<br>
+                                    Email: ${process.env.EMAIL_USER || process.env.GMAIL_USER}<br>
                                     Phone: 01676690930
                                 </p>
                             </div>
                         </div>
                     </body>
                     </html>`;
-
         };
+
+        // Notification template for admin
         const generateQueryEmailTemplate = (queryData) => {
             const currentDate = new Date().toLocaleString('en-US', {
                 weekday: 'long',
@@ -60,7 +144,6 @@ router.post('/send', async (req, res) => {
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>New Website Query</title>
                 <style>
-                    /* Reset and Base Styles */
                     * {
                         margin: 0;
                         padding: 0;
@@ -75,7 +158,6 @@ router.post('/send', async (req, res) => {
                         padding: 20px;
                     }
                     
-                    /* Email Container */
                     .email-container {
                         max-width: 600px;
                         margin: 0 auto;
@@ -85,7 +167,6 @@ router.post('/send', async (req, res) => {
                         overflow: hidden;
                     }
                     
-                    /* Header Section */
                     .email-header {
                         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                         color: white;
@@ -105,12 +186,10 @@ router.post('/send', async (req, res) => {
                         font-weight: 300;
                     }
                     
-                    /* Content Section */
                     .email-content {
                         padding: 40px 30px;
                     }
                     
-                    /* Timestamp */
                     .timestamp {
                         text-align: center;
                         color: #666;
@@ -126,7 +205,6 @@ router.post('/send', async (req, res) => {
                         color: #333;
                     }
                     
-                    /* Priority Badge */
                     .priority-badge {
                         display: inline-flex;
                         align-items: center;
@@ -146,14 +224,12 @@ router.post('/send', async (req, res) => {
                         font-size: 16px;
                     }
                     
-                    /* Divider */
                     .divider {
                         height: 1px;
                         background: linear-gradient(90deg, transparent, #e0e0e0, transparent);
                         margin: 30px 0;
                     }
                     
-                    /* Query Details */
                     .query-section h2 {
                         color: #2c3e50;
                         font-size: 20px;
@@ -234,7 +310,6 @@ router.post('/send', async (req, res) => {
                         color: #495057;
                     }
                     
-                    /* Quick Actions */
                     .quick-actions {
                         margin-top: 40px;
                     }
@@ -281,7 +356,6 @@ router.post('/send', async (req, res) => {
                         box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
                     }
                     
-                    /* Footer */
                     .email-footer {
                         background: #f8f9fa;
                         padding: 25px 30px;
@@ -295,7 +369,6 @@ router.post('/send', async (req, res) => {
                         margin-bottom: 8px;
                     }
                     
-                    /* Responsive Design */
                     @media (max-width: 600px) {
                         body {
                             padding: 10px;
@@ -340,28 +413,22 @@ router.post('/send', async (req, res) => {
             </head>
             <body>
                 <div class="email-container">
-                    <!-- Header -->
                     <div class="email-header">
                         <h1>New Website Query</h1>
                         <p>You have received a new contact form submission</p>
                     </div>
                     
-                    <!-- Content -->
                     <div class="email-content">
-                        <!-- Timestamp -->
                         <div class="timestamp">
-                            Received on: <strong>Wednesday, November 26, 2025 at 02:39 PM</strong>
+                            Received on: <strong>${currentDate}</strong>
                         </div>
                         
-                        <!-- Priority Badge -->
                         <div class="priority-badge">
                             Priority: Medium
                         </div>
                         
-                        <!-- Divider -->
                         <div class="divider"></div>
                         
-                        <!-- Query Details -->
                         <div class="query-section">
                             <h2>Contact Information</h2>
                             <div class="user-info">
@@ -374,7 +441,7 @@ router.post('/send', async (req, res) => {
                                     <div class="info-label">Contact:</div>
                                     <div class="info-value contact-info">
                                         <a href="mailto:${queryData.email}" class="contact-link">${queryData.email}</a>
-                                        <a href="tel:${queryData.phone}" class="contact-link">${queryData.phone}</a>
+                                        ${queryData.phone ? `<a href="tel:${queryData.phone}" class="contact-link">${queryData.phone}</a>` : '<span class="contact-link">Phone not provided</span>'}
                                     </div>
                                 </div>
                                 
@@ -388,43 +455,48 @@ router.post('/send', async (req, res) => {
                         </div>
                     </div>
                     
-                    <!-- Footer -->
                     <div class="email-footer">
                         <p>This email was automatically generated from your website contact form.</p>
-                        <p>© 2025 Saddam Portfolio. All rights reserved.</p>
+                        <p>© ${new Date().getFullYear()} Saddam Portfolio. All rights reserved.</p>
                     </div>
                 </div>
             </body>
             </html>`;
-        }
+        };
 
-        const { error: notifyError } = await resend.emails.send({
-            from: `${name} <notify@resend.dev>`, // Change yourdomain.com to your actual domain or keep as-is
-            to: process.env.EMAIL_USER,
-            replyTo: email, // When you hit reply → goes to client
+        // 1. Send notification email to admin (you)
+        const adminEmail = await transporter.sendMail({
+            from: `"Portfolio Contact Form" <${process.env.GMAIL_USER}>`,
+            to: process.env.EMAIL_USER || process.env.GMAIL_USER,
             subject: `New Message from ${name} (${email})`,
-            html: generateQueryEmailTemplate({ name, email, phone, message }), // your beautiful template stays the same
+            html: generateQueryEmailTemplate({ name, email, phone, message }),
+            replyTo: email
         });
 
-        if (notifyError) {
-            console.error('Failed to send to you:', notifyError);
-            return res.status(500).json({ success: false, error: 'Failed to send notification' });
-        }
-
         // 2. Send auto-reply to the client
-        await resend.emails.send({
-            from: `Md. Saddam Hossain <${process.env.EMAIL_USER}>`, // Your name/email
+        const autoReplyEmail = await transporter.sendMail({
+            from: `"Md. Saddam Hossain" <${process.env.GMAIL_USER}>`,
             to: email,
             subject: 'Thank you for contacting me! I received your message',
-            html: generateAutoReplyTemplate({ name }),
+            html: generateAutoReplyTemplate({ name })
         });
 
         res.json({
             success: true,
             message: 'Message sent successfully! Auto-reply delivered.',
+            data: {
+                adminNotificationId: adminEmail.messageId,
+                autoReplyId: autoReplyEmail.messageId
+            }
         });
+
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        console.error('Email sending error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Failed to send email. Please try again later.',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 

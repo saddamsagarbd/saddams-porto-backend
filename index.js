@@ -1,29 +1,43 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import serverless from "serverless-http";
-import dotenv from 'dotenv';
-dotenv.config();
-
-// 2. Critical check — stop everything if key is missing
-console.log('RESEND_API_KEY:', process.env.RESEND_API_KEY ? 'Loaded ✅' : 'Missing ❌');
-if (!process.env.RESEND_API_KEY) {
-    console.error('RESEND_API_KEY is missing in .env file!');
-    process.exit(1); // Stop the server completely
-}
+import emailRouter from './routes/email.js';
 
 const app = express();
 
 // Middleware
-// app.use(cors());
-app.use(express.json());
 app.use(cors({
-    origin: ['https://www.gowithsagar.xyz', 'http://localhost:3000'],
-    methods: ['GET','POST','OPTIONS'],
-    allowedHeaders: ["Content-Type"],
+    origin: ['http://localhost:3000', 'https://www.gowithsagar.xyz'],
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type']
 }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 // Routes
-import emailRouter from './routes/email.js'
-app.use('/email', emailRouter);
+app.use('/api/email', emailRouter);
+
+// Test route
+app.get('/api', (req, res) => {
+    res.json({ message: 'API is working' });
+});
+
+// Error handler
+app.use((err, req, res, next) => {
+    console.error('Server error:', err);
+    
+    if (err.message === 'Not allowed by CORS') {
+        return res.status(403).json({ 
+            error: 'CORS Error',
+            message: 'Origin not allowed' 
+        });
+    }
+    
+    res.status(500).json({ 
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+});
 
 // const PORT = process.env.PORT || 5000;
 // app.listen(PORT, () => {
